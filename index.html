@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Autokennzeichen-Suche</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    select, input { padding: 8px; margin: 5px; font-size: 16px; }
+    ul { margin-top: 10px; list-style: none; padding: 0; }
+    li { padding: 10px; border-bottom: 1px solid #ddd; }
+    button { margin-left: 10px; padding: 5px 10px; font-size: 14px; cursor: pointer; }
+    <style>
+  body {
+    transition: background-color 0.3s, color 0.3s;
+  }
+
+  .dark-mode {
+    background-color: #121212;
+    color: #f0f0f0;
+  }
+
+  .dark-mode input, .dark-mode select {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border: 1px solid #555;
+  }
+
+  #toggleDarkMode {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    padding: 6px 12px;
+    z-index: 1000;
+    cursor: pointer;
+  }
+</style>
+  </style>
+</head>
+<body>
+  <h2>Autokennzeichen-Suche</h2>
+
+  <label for="type">Kategorie wählen:</label>
+  <select id="type" onchange="updatePlaceholder(); showSuggestions();">
+    <option value="de">Deutsch</option>
+    <option value="all">Allgemein</option>
+  </select>
+
+  <br>
+
+  <label for="search">Kennzeichen eingeben:</label>
+  <input type="text" id="search" placeholder="" autocomplete="off"
+         oninput="showSuggestions()" onkeydown="handleKeyDown(event)">
+
+  <ul id="suggestions" style="border: 1px solid #ccc; max-width: 300px;"></ul>
+  <ul id="resultList"></ul>
+  
+<button id="toggleDarkMode">Darkmode/Whitemode umschalten</button>
+  <script>
+  let data = { de: [], all: [] };
+  let currentFocus = -1;
+
+  // JSON laden und Platzhalter setzen
+  fetch("daten.json")
+    .then(response => response.json())
+    .then(json => {
+      data = json;
+      updatePlaceholder();
+    })
+    .catch(error => console.error("Fehler beim Laden der JSON-Datei:", error));
+
+  // Platzhalter dynamisch ändern
+  function updatePlaceholder() {
+    const type = document.getElementById("type").value;
+    const input = document.getElementById("search");
+
+    if (type === "de") {
+      input.placeholder = "Ort in Deutschland oder Kennzeichen eingeben";
+    } else {
+      input.placeholder = "Länderkürzel wie F, I, CH eingeben";
+    }
+  }
+
+  // Autovervollständigung anzeigen
+  function showSuggestions() {
+    const input = document.getElementById("search");
+    const type = document.getElementById("type").value;
+    const suggestions = document.getElementById("suggestions");
+    const val = input.value.toUpperCase();
+    suggestions.innerHTML = "";
+    currentFocus = -1;
+
+    if (!val) return;
+
+    data[type].forEach(entry => {
+      if (entry.code.startsWith(val)) {
+        const li = document.createElement("li");
+        li.textContent = `${entry.code} – ${entry.city}`;
+        li.style.cursor = "pointer";
+        li.style.padding = "5px";
+        li.onclick = function () {
+          input.value = entry.code;
+          suggestions.innerHTML = "";
+          filterList();
+        };
+        suggestions.appendChild(li);
+      }
+    });
+  }
+
+  // Tastennavigation in Autovervollständigung
+  function handleKeyDown(e) {
+    const suggestions = document.getElementById("suggestions").getElementsByTagName("li");
+    if (e.key === "ArrowDown") {
+      currentFocus++;
+      highlightSuggestion(suggestions);
+    } else if (e.key === "ArrowUp") {
+      currentFocus--;
+      highlightSuggestion(suggestions);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (currentFocus > -1 && suggestions[currentFocus]) {
+        suggestions[currentFocus].click();
+      }
+    }
+  }
+
+  // Markierung im Vorschlag hervorheben
+  function highlightSuggestion(items) {
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      items[i].style.background = "";
+    }
+    if (currentFocus >= items.length) currentFocus = 0;
+    if (currentFocus < 0) currentFocus = items.length - 1;
+    items[currentFocus].style.background = "#ddd";
+  }
+
+  // Ergebnisliste anzeigen
+  function filterList() {
+    const type = document.getElementById("type").value;
+    const input = document.getElementById("search").value.toUpperCase();
+    const list = document.getElementById("resultList");
+    list.innerHTML = "";
+
+    data[type].forEach(entry => {
+      if (entry.code === input) {
+        const li = document.createElement("li");
+        let text = `<strong>${entry.code}</strong> – ${entry.city}`;
+
+        if (entry.state) text += ` (${entry.state})`;
+        if (entry.population) text += ` – ${entry.population}`;
+        if (entry.flag) text += ` ${entry.flag}`;
+
+        li.innerHTML = text;
+
+        const btn = document.createElement("button");
+        btn.textContent = "Auf der Karte zeigen";
+        btn.onclick = () => {
+          const url = "https://www.google.com/maps/search/" + encodeURIComponent(entry.city);
+          window.open(url, "_blank");
+        };
+
+        li.appendChild(btn);
+        list.appendChild(li);
+      }
+    });
+  }
+</script>
+<script>
+  const toggleBtn = document.getElementById('toggleDarkMode');
+  const currentMode = localStorage.getItem('mode');
+  if (currentMode === 'dark') {
+    document.body.classList.add('dark-mode');
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    localStorage.setItem('mode', isDark ? 'dark' : 'light');
+  });
+</script>
+</body>
+</html>
