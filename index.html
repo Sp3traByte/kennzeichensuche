@@ -17,6 +17,29 @@
 
   <!-- Styles -->
   <style>
+    /* Spinner (Overlay) */
+.spinner {
+  position: fixed; inset: 0; display: none; place-items: center;
+  background: rgba(0,0,0,.25); backdrop-filter: blur(2px); z-index: 9999;
+}
+.spinner .dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 4px rgba(91,140,255,.25);
+  animation: pulse 1.1s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { transform: scale(0.9); opacity: .6; }
+  50%      { transform: scale(1.25); opacity: 1; }
+}
+
+/* Fade-in für Karten/Vorschläge */
+.fade-in { animation: fadeIn .28s ease-out both; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(4px) } to { opacity:1; transform:none } }
+
+/* Dezente Hover-/Focus-Transitions verfeinern */
+.card, #search, .btn { transition: border-color .2s, box-shadow .2s, transform .12s; }
+.card:hover { transform: translateY(-1px); }
     :root{
       --bg:#0b1020; --bg-soft:#111733; --card:#0f1733; --text:#e9ecf5; --muted:#a7b0c6;
       --primary:#5b8cff; --accent:#8ef0bf; --ring:rgba(139,172,255,.35);
@@ -83,9 +106,13 @@
 
 <body>
   <div class="container">
+    <!-- Lade-Overlay -->
+    <div id="spinner" class="spinner">
+      <div class="dot"></div>
+    </div>
     <div class="header">
       <div class="brand">
-        <div class="logo">KZ</div>
+        <div class="logo">KFZ</div>
         <strong>Kennzeichensuche</strong>
       </div>
       <div class="toolbar">
@@ -103,7 +130,7 @@
     <!-- Ergebnisse + Favoriten + Verlauf -->
     <div id="results"></div>
     <section class="section" style="margin-top:22px">
-      <h3>Meine Favoriten</h3>
+      <h3>Meine Favoriten ⭐</h3>
       <button id="clearFavs" class="btn" type="button">Favoriten löschen</button>
       <div id="favs" style="margin:.6rem 0 1.1rem;"></div>
     </section>
