@@ -160,6 +160,29 @@
   border-radius:3px;
   padding:0 2px;
 }
+    /* === Fix: Verlauf / Historie Farben im Darkmode === */
+.history-entry, .history-entry * {
+  color: var(--text) !important;
+}
+
+#history .card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: .75rem 1rem;
+  margin-bottom: .6rem;
+}
+
+#history .card:hover {
+  background: rgba(255,255,255,0.08);
+  transition: background .2s ease;
+}
+
+/* Optional: kleine Schrift für Zeitangaben etc. */
+.history-time {
+  color: var(--muted);
+  font-size: .85rem;
+}
   </style>
 </head>
 
