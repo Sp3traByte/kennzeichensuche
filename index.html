@@ -287,6 +287,7 @@ function hideSpinner(){ if (spinner) spinner.style.display = 'none'; }
 if (!wantIntro) showSpinner();  // Spinner nur zeigen, wenn kein Intro läuft
 let rows;
 try {
+  try {
   const t0 = Date.now();
   const data = await fetch('daten.json').then(r => {
     if (!r.ok) throw new Error('Daten konnten nicht geladen werden.');
@@ -295,16 +296,23 @@ try {
   rows = Array.isArray(data) ? data : (Array.isArray(data.de) ? data.de : Object.values(data));
   const delay = Math.max(0, 300 - (Date.now() - t0)); // min. 300ms
   await new Promise(res => setTimeout(res, delay));
+
+  // Erfolgreich geladen:
+  if (wantIntro) {
+    hideIntro();
+    localStorage.setItem('kz_intro_done', '1');
+  } else {
+    hideSpinner();
+  }
+
 } catch (err) {
   console.error(err);
-
-  // NEU: Intro auch schließen, falls es aktiv war
-    // Fallback: Intro nach 3s sicher schließen (z. B. bei Netzwerkproblemen)
-if (wantIntro) {
-  setTimeout(() => {
-    if (introEl && introEl.style.display !== 'none') hideIntro();
-  }, 3000);}
-  localStorage.setItem('kz_intro_done', '1');
+  // Fallback: Intro nach 3 s sicher schließen (z. B. bei Netzwerkproblemen)
+  if (wantIntro) {
+    setTimeout(() => {
+      if (introEl && introEl.style.display !== 'none') hideIntro();
+    }, 3000);
+    localStorage.setItem('kz_intro_done', '1');
   } else {
     hideSpinner();
   }
@@ -312,7 +320,7 @@ if (wantIntro) {
   document.getElementById('results').innerHTML =
     '<p class="muted">❌ Daten konnten nicht geladen werden. Prüfe <code>daten.json</code>.</p>';
   return;
-}
+  }
 // Nach erfolgreichem Laden:
 if (wantIntro) {
   hideIntro();
