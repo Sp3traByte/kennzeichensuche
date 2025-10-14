@@ -1,184 +1,326 @@
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <title>Autokennzeichen-Suche</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kennzeichensuche</title>
+
+  <!-- Manifest & App-Infos -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#121212" />
+  <meta name="description" content="Offlinefähige Kennzeichen-App mit Favoriten und Verlauf." />
+  
+  <!-- Icons -->
+  <link rel="icon" href="icons/icon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <!-- Styles -->
   <style>
-    body { font-family: sans-serif; margin: 20px; }
-    select, input { padding: 8px; margin: 5px; font-size: 16px; }
-    ul { margin-top: 10px; list-style: none; padding: 0; }
-    li { padding: 10px; border-bottom: 1px solid #ddd; }
-    button { margin-left: 10px; padding: 5px 10px; font-size: 14px; cursor: pointer; }
-    <style>
-  body {
-    transition: background-color 0.3s, color 0.3s;
-  }
+    :root{
+      --bg:#0b1020; --bg-soft:#111733; --card:#0f1733; --text:#e9ecf5; --muted:#a7b0c6;
+      --primary:#5b8cff; --accent:#8ef0bf; --ring:rgba(139,172,255,.35);
+      --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    @media (prefers-color-scheme: light){
+      :root{ --bg:#f6f8fc; --bg-soft:#fff; --card:#fff; --text:#0d1220; --muted:#6b7280;
+        --primary:#3b82f6; --accent:#10b981; --ring:rgba(59,130,246,.25); --shadow:0 10px 25px rgba(15,23,42,.08); }
+    }
+    body.light{ --bg:#f6f8fc; --bg-soft:#fff; --card:#fff; --text:#0d1220; --muted:#6b7280;
+      --primary:#3b82f6; --accent:#10b981; --ring:rgba(59,130,246,.25); --shadow:0 10px 25px rgba(15,23,42,.08); }
 
-  .dark-mode {
-    background-color: #121212;
-    color: #f0f0f0;
-  }
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 100% -10%, rgba(91,140,255,.25), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(142,240,191,.18), transparent 60%),
+        var(--bg);
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased; line-height:1.45;
+    }
+    .container{max-width:900px;margin:0 auto;padding:24px}
+    .header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px;}
+    .brand{display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:999px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow);}
+    .brand .logo{width:36px;height:36px;border-radius:10px; display:grid;place-items:center;color:#fff;font-weight:800;
+      background: linear-gradient(135deg,var(--primary),#7aa4ff); box-shadow: 0 10px 18px rgba(91,140,255,.35), inset 0 1px 1px rgba(255,255,255,.25);}
+    .brand strong{font-size:1.05rem}
+    .toolbar{display:flex; gap:10px; align-items:center}
+    .btn{appearance:none; border:1px solid rgba(255,255,255,.1); color:var(--text);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      padding:.55rem .85rem; border-radius:12px; cursor:pointer; box-shadow:var(--shadow);}
+    .btn:hover{border-color:var(--ring)}
+    .btn.primary{background:linear-gradient(180deg, rgba(91,140,255,.25), rgba(91,140,255,.15)); border-color:var(--ring)}
 
-  .dark-mode input, .dark-mode select {
-    background-color: #1e1e1e;
-    color: #ffffff;
-    border: 1px solid #555;
-  }
-
-  #toggleDarkMode {
-    position: fixed;
-    bottom: 10px;
-    left: 10px;
-    padding: 6px 12px;
-    z-index: 1000;
-    cursor: pointer;
-  }
-</style>
+    .searchWrap{position:relative; margin:10px 0 16px;}
+    #search{width:100%; padding:14px 16px; border-radius:14px; border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); color:var(--text); outline:none; box-shadow:var(--shadow);}
+    #search:focus{border-color:var(--ring); box-shadow:0 0 0 4px var(--ring)}
+    #results{display:grid; gap:12px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.12); border-radius:var(--radius); padding:14px 16px;
+      box-shadow:var(--shadow); backdrop-filter: blur(4px);}
+    .topRow{display:flex;align-items:center; justify-content:space-between; gap:12px}
+    .code{font-size:1.05rem; font-weight:800; letter-spacing:.5px; padding:.25rem .6rem; border-radius:10px; color:#0b1020;
+      background: linear-gradient(135deg,#fff,#ebefff); box-shadow:inset 0 1px 0 rgba(0,0,0,.05), 0 6px 14px rgba(91,140,255,.25);}
+    .badge{display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; padding:.25rem .55rem; border-radius:999px;
+      background:rgba(91,140,255,.15); color:#dbe7ff; border:1px solid rgba(91,140,255,.25);}
+    .flag{font-size:1rem}
+    .muted{color:var(--muted)}
+    .link{margin-top:.4rem; display:inline-block}
+    .link a{color:var(--accent); text-decoration:none}
+    .link a:hover{text-decoration:underline}
+    .icon-btn{background:none; border:none; cursor:pointer; font-size:1.1rem; color:#ffd56a}
+    .icon-btn.fav{filter: drop-shadow(0 3px 6px rgba(255,213,106,.35))}
+    .pill{display:inline-flex; gap:.5rem; align-items:center; padding:.35rem .65rem; border-radius:999px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.12); margin:.25rem .35rem .25rem 0; box-shadow:var(--shadow);}
+    .pill .code{background:transparent; color:inherit; box-shadow:none; padding:0; font-size:.9rem}
   </style>
 </head>
+
 <body>
-  <h2>Autokennzeichen-Suche</h2>
+  <div class="container">
+    <div class="header">
+      <div class="brand">
+        <div class="logo">KZ</div>
+        <strong>Kennzeichensuche</strong>
+      </div>
+      <div class="toolbar">
+        <button id="themeToggle" class="btn">🌗 Theme</button>
+        <a class="btn primary" href="https://www.google.com/maps" target="_blank" rel="noopener">Maps</a>
+      </div>
+    </div>
 
-  <label for="type">Kategorie wählen:</label>
-  <select id="type" onchange="updatePlaceholder(); showSuggestions();">
-    <option value="de">Deutsch</option>
-    <option value="all">Allgemein</option>
-  </select>
+    <!-- Suche -->
+    <div class="searchWrap">
+      <input id="search" type="text" placeholder="Kennzeichen, Ort oder Bundesland …" autocomplete="off">
+      <div id="suggestions"></div>
+    </div>
 
-  <br>
+    <!-- Ergebnisse + Favoriten + Verlauf -->
+    <div id="results"></div>
+    <section class="section" style="margin-top:22px">
+      <h3>Meine Favoriten</h3>
+      <button id="clearFavs" class="btn" type="button">Favoriten löschen</button>
+      <div id="favs" style="margin:.6rem 0 1.1rem;"></div>
+    </section>
+    <section class="section" style="margin-top:22px">
+      <h3>Zuletzt gesucht</h3>
+      <button id="clearHistory" class="btn" type="button">Verlauf löschen</button>
+      <div id="history" style="margin:.6rem 0;"></div>
+    </section>
+  </div>
 
-  <label for="search">Kennzeichen eingeben:</label>
-  <input type="text" id="search" placeholder="" autocomplete="off"
-         oninput="showSuggestions()" onkeydown="handleKeyDown(event)">
+  <!-- Libs -->
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6"></script>
 
-  <ul id="suggestions" style="border: 1px solid #ccc; max-width: 300px;"></ul>
-  <ul id="resultList"></ul>
-  
-<button id="toggleDarkMode">Darkmode/Whitemode umschalten</button>
+  <!-- App-Logik -->
   <script>
-  let data = { de: [], all: [] };
-  let currentFocus = -1;
+  (async function() {
+    const input = document.getElementById('search');
+    const suggWrap = document.getElementById('suggestions');
+    const resultsEl = document.getElementById('results');
 
-  // JSON laden und Platzhalter setzen
-  fetch("daten.json")
-    .then(response => response.json())
-    .then(json => {
-      data = json;
-      updatePlaceholder();
-    })
-    .catch(error => console.error("Fehler beim Laden der JSON-Datei:", error));
+    const data = await fetch('daten.json').then(r => r.json());
+    const rows = Array.isArray(data) ? data : (Array.isArray(data.de) ? data.de : Object.values(data));
 
-  // Platzhalter dynamisch ändern
-  function updatePlaceholder() {
-    const type = document.getElementById("type").value;
-    const input = document.getElementById("search");
-
-    if (type === "de") {
-      input.placeholder = "Ort in Deutschland oder Kennzeichen eingeben";
-    } else {
-      input.placeholder = "Länderkürzel wie F, I, CH eingeben";
-    }
-  }
-
-  // Autovervollständigung anzeigen
-  function showSuggestions() {
-    const input = document.getElementById("search");
-    const type = document.getElementById("type").value;
-    const suggestions = document.getElementById("suggestions");
-    const val = input.value.toUpperCase();
-    suggestions.innerHTML = "";
-    currentFocus = -1;
-
-    if (!val) return;
-
-    data[type].forEach(entry => {
-      if (entry.code.startsWith(val)) {
-        const li = document.createElement("li");
-        li.textContent = `${entry.code} – ${entry.city}`;
-        li.style.cursor = "pointer";
-        li.style.padding = "5px";
-        li.onclick = function () {
-          input.value = entry.code;
-          suggestions.innerHTML = "";
-          filterList();
-        };
-        suggestions.appendChild(li);
-      }
+    const fuse = new Fuse(rows, {
+      keys: [
+        { name: 'code',  weight: 0.6 },
+        { name: 'city',  weight: 0.3 },
+        { name: 'state', weight: 0.1 }
+      ],
+      threshold: 0.3, ignoreLocation: true, minMatchCharLength: 1, includeMatches: true, useExtendedSearch: true
     });
-  }
+    window.fuse = fuse;
 
-  // Tastennavigation in Autovervollständigung
-  function handleKeyDown(e) {
-    const suggestions = document.getElementById("suggestions").getElementsByTagName("li");
-    if (e.key === "ArrowDown") {
-      currentFocus++;
-      highlightSuggestion(suggestions);
-    } else if (e.key === "ArrowUp") {
-      currentFocus--;
-      highlightSuggestion(suggestions);
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (currentFocus > -1 && suggestions[currentFocus]) {
-        suggestions[currentFocus].click();
+    function debounce(fn, ms=160){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); }; }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#039;' }[m])); }
+    window.escapeHtml = escapeHtml;
+
+    function highlight(line, matches, item) {
+      if (!matches || matches.length === 0) return escapeHtml(line);
+      let out = line;
+      function markField(fieldName) {
+        const m = matches.find(mm => mm.key === fieldName); if (!m) return;
+        const ranges = m.indices.slice().sort((a,b)=>b[0]-a[0]);
+        let val = String(item[fieldName] ?? '');
+        ranges.forEach(([s,e]) => { val = val.slice(0,s) + '<span class="hl">' + escapeHtml(val.slice(s,e+1)) + '</span>' + val.slice(e+1); });
+        out = out.replace(String(item[fieldName] ?? ''), val);
       }
+      ['code','city','state'].forEach(markField);
+      return out;
     }
-  }
 
-  // Markierung im Vorschlag hervorheben
-  function highlightSuggestion(items) {
-    if (!items) return;
-    for (let i = 0; i < items.length; i++) {
-      items[i].style.background = "";
+    let activeIndex = -1;
+    function showSuggestions(items) {
+      if (!items || items.length === 0 || !input.value.trim()) { suggWrap.innerHTML = ''; activeIndex = -1; return; }
+      const list = document.createElement('div'); list.className = 'list'; list.setAttribute('role','listbox');
+      items.slice(0,8).forEach((res, i) => {
+        const it = res.item || res;
+        const div = document.createElement('div'); div.className = 'sug'; div.setAttribute('role','option'); div.dataset.index = i;
+        const line = `${it.code}${it.city ? ' · '+it.city : ''}${it.state ? ' · '+it.state : ''}`;
+        div.innerHTML = highlight(line, res.matches || [], it);
+        div.addEventListener('mousedown', (e) => { e.preventDefault(); selectSuggestion(it); });
+        list.appendChild(div);
+      });
+      suggWrap.innerHTML = ''; suggWrap.appendChild(list); activeIndex = -1;
     }
-    if (currentFocus >= items.length) currentFocus = 0;
-    if (currentFocus < 0) currentFocus = items.length - 1;
-    items[currentFocus].style.background = "#ddd";
-  }
 
-  // Ergebnisliste anzeigen
-  function filterList() {
-    const type = document.getElementById("type").value;
-    const input = document.getElementById("search").value.toUpperCase();
-    const list = document.getElementById("resultList");
-    list.innerHTML = "";
+    function selectSuggestion(item) {
+      input.value = [item.code, item.city, item.state].filter(Boolean).join(' · ');
+      suggWrap.innerHTML = '';
+      const final = fuse.search(`^${item.code}`);
+      renderResults(final.length ? final : [{item}]);
+    }
 
-    data[type].forEach(entry => {
-      if (entry.code === input) {
-        const li = document.createElement("li");
-        let text = `<strong>${entry.code}</strong> – ${entry.city}`;
+    const onType = debounce(() => {
+      const q = input.value.trim();
+      if (!q) { suggWrap.innerHTML=''; resultsEl.innerHTML=''; return; }
+      const res = fuse.search(q); showSuggestions(res); renderResults(res);
+    }, 140);
 
-        if (entry.state) text += ` (${entry.state})`;
-        if (entry.population) text += ` – ${entry.population}`;
-        if (entry.flag) text += ` ${entry.flag}`;
+    input.addEventListener('input', onType);
+    input.addEventListener('focus', onType);
+    input.addEventListener('blur', () => setTimeout(()=>suggWrap.innerHTML='', 120));
 
-        li.innerHTML = text;
-
-        const btn = document.createElement("button");
-        btn.textContent = "Auf der Karte zeigen";
-        btn.onclick = () => {
-          const url = "https://www.google.com/maps/search/" + encodeURIComponent(entry.city);
-          window.open(url, "_blank");
-        };
-
-        li.appendChild(btn);
-        list.appendChild(li);
-      }
+    document.addEventListener('keydown', (e) => {
+      const list = suggWrap.querySelector('.list'); if (!list) return;
+      const items = Array.from(list.querySelectorAll('.sug'));
+      if (['ArrowDown','ArrowUp','Enter','Escape'].includes(e.key)) e.preventDefault();
+      if (e.key === 'ArrowDown') { activeIndex = Math.min(activeIndex + 1, items.length - 1); items.forEach(el => el.classList.remove('active')); if (items[activeIndex]) items[activeIndex].classList.add('active'); }
+      if (e.key === 'ArrowUp')   { activeIndex = Math.max(activeIndex - 1, 0); items.forEach(el => el.classList.remove('active')); if (items[activeIndex]) items[activeIndex].classList.add('active'); }
+      if (e.key === 'Enter' && activeIndex >= 0) { items[activeIndex].dispatchEvent(new MouseEvent('mousedown')); }
+      if (e.key === 'Escape') { suggWrap.innerHTML = ''; }
     });
+  })();
+
+  /* Favoriten + Verlauf */
+  const favKey = 'kz_favs_v1';
+  const histKey = 'kz_history_v1';
+  function readLS(key, def=[]) { try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; } }
+  function writeLS(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+  function getFavs() { return readLS(favKey); }
+  function setFavs(arr) { writeLS(favKey, arr); renderFavs(); }
+  function getHistory() { return readLS(histKey); }
+  function setHistory(arr) { writeLS(histKey, arr); renderHistory(); }
+  function pushHistory(entry) {
+    const h = getHistory();
+    const id = [entry.code, entry.city, entry.state].filter(Boolean).join('|');
+    const filtered = h.filter(x => x.id !== id);
+    filtered.unshift({ id, ...entry });
+    setHistory(filtered.slice(0, 12));
   }
-</script>
-<script>
-  const toggleBtn = document.getElementById('toggleDarkMode');
-  const currentMode = localStorage.getItem('mode');
-  if (currentMode === 'dark') {
-    document.body.classList.add('dark-mode');
+  function isFav(code) { return getFavs().some(x => x.code === code); }
+  function toggleFav(entry) {
+    const favs = getFavs();
+    const exists = favs.find(x => x.code === entry.code);
+    const next = exists ? favs.filter(x => x.code !== entry.code)
+                        : [{ code: entry.code, city: entry.city, state: entry.state, flag: entry.flag }, ...favs].slice(0, 50);
+    setFavs(next);
+  }
+  function renderFavs() {
+    const favsEl = document.getElementById('favs');
+    const favs = getFavs();
+    favsEl.innerHTML = favs.length ? favs.map(it => `
+      <span class="pill">
+        <span class="code">${escapeHtml(it.code)}</span>
+        <span class="city">${escapeHtml(it.city||'—')}</span>
+        ${it.state ? `<span class="badge">${escapeHtml(it.state)}</span>` : ''}
+        <button class="icon-btn" title="Favorit entfernen" onclick='(function(){toggleFav(${JSON.stringify(it)}); renderFavs(); })()'>✖</button>
+      </span>
+    `).join('') : '<span class="muted">Noch keine Favoriten.</span>';
+  }
+  function renderHistory() {
+    const histEl = document.getElementById('history');
+    const h = getHistory();
+    histEl.innerHTML = h.length ? h.map(it => `
+      <button class="pill" title="Erneut suchen" onclick='(function(){selectFromHistory(${JSON.stringify(it)});})()'>
+        <span class="code">${escapeHtml(it.code)}</span>
+        <span class="city">${escapeHtml(it.city||'—')}</span>
+        ${it.state ? `<span class="badge">${escapeHtml(it.state)}</span>` : ''}
+      </button>
+    `).join('') : '<span class="muted">Noch kein Verlauf.</span>';
+  }
+  function selectFromHistory(it) {
+    const q = [it.code, it.city, it.state].filter(Boolean).join(' · ');
+    const input = document.getElementById('search');
+    input.value = q;
+    const res = (window.fuse ? window.fuse.search(q) : []);
+    renderResults(res && res.length ? res : [{ item: it }]);
   }
 
-  toggleBtn.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('mode', isDark ? 'dark' : 'light');
-  });
-</script>
+  function renderResults(list) {
+    const resultsEl = document.getElementById('results');
+    if (!list || list.length === 0) { resultsEl.innerHTML = '<p class="muted">Keine Treffer.</p>'; return; }
+    resultsEl.innerHTML = list.map(res => {
+      const it = res.item || res;
+      const flag = it.flag ? `<span class="flag">${escapeHtml(it.flag)}</span>` : '';
+      const state = it.state ? `<span class="badge">${escapeHtml(it.state)}</span>` : '';
+      const city = it.city ? escapeHtml(it.city) : '—';
+      const code = escapeHtml(it.code);
+      const mapQ = encodeURIComponent(it.city || it.code);
+      const favOn = isFav(it.code);
+      return `
+        <div class="card">
+          <div class="topRow">
+            <div>
+              <div class="meta" style="display:flex;gap:10px;align-items:center;">
+                <span class="code">${code}</span>
+                ${state} ${flag}
+              </div>
+              <div class="muted" style="margin-top:.25rem">${city}</div>
+            </div>
+            <button class="icon-btn ${favOn ? 'fav' : ''}" 
+                    title="${favOn ? 'Favorit entfernen' : 'Als Favorit speichern'}"
+                    onclick='(function(){
+                      toggleFav(${JSON.stringify(it)});
+                      const q = document.getElementById("search").value;
+                      const res = (window.fuse ? window.fuse.search(q) : []);
+                      renderResults(res && res.length ? res : [{ item: ${JSON.stringify(it)} }]);
+                    })()'>
+              ${favOn ? '★' : '☆'}
+            </button>
+          </div>
+          <div class="link">
+            <a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${mapQ}">
+              Auf der Karte zeigen
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
+    const first = list[0]?.item || list[0];
+    if (first) pushHistory(first);
+    renderFavs(); renderHistory();
+  }
+
+  // Panels initial
+  renderFavs(); renderHistory();
+  </script>
+
+  <!-- Theme + Service Worker -->
+  <script>
+    // Theme speichern
+    (function(){
+      const key = 'kz_theme';
+      const saved = localStorage.getItem(key);
+      if (saved === 'light') document.body.classList.add('light');
+      document.getElementById('themeToggle')?.addEventListener('click', ()=>{
+        document.body.classList.toggle('light');
+        localStorage.setItem(key, document.body.classList.contains('light') ? 'light' : 'dark');
+      });
+    })();
+
+    // Service Worker registrieren
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('✅ Service Worker registriert'))
+        .catch(err => console.error('❌ Service Worker Fehler:', err));
+    }
+  </script>
 </body>
 </html>
