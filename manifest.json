@@ -1,6 +1,6 @@
 {
   "name": "Kennzeichen-Suche",
-  "short_name": "KZ-Suche",
+  "short_name": "Kennzeichen-Finder",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#121212",
