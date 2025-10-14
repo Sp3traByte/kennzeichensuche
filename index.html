@@ -297,7 +297,16 @@ try {
   await new Promise(res => setTimeout(res, delay));
 } catch (err) {
   console.error(err);
-  if (!wantIntro) hideSpinner();
+
+  // NEU: Intro auch schließen, falls es aktiv war
+  if (wantIntro) {
+    hideIntro();
+    // Optional: Wenn du vermeiden willst, dass das Intro beim nächsten Laden wieder kommt:
+    // localStorage.setItem('kz_intro_done', '1');
+  } else {
+    hideSpinner();
+  }
+
   document.getElementById('results').innerHTML =
     '<p class="muted">❌ Daten konnten nicht geladen werden. Prüfe <code>daten.json</code>.</p>';
   return;
