@@ -268,66 +268,60 @@ function hideIntro(){
   setTimeout(()=> { introEl.style.display = 'none'; }, 500);
 }
 
-// Intro nur beim ersten Besuch anzeigen (oder mit ?intro=1 erzwingen)
+// Intro / Spinner + Timeout-Logik
 const forceIntro = new URL(location.href).searchParams.get('intro') === '1';
-const wantIntro = forceIntro || !localStorage.getItem('kz_intro_done');
-if (wantIntro) showIntro();
+const wantIntro  = forceIntro || !localStorage.getItem('kz_intro_done');
 
-  (async function() {
-    const input = document.getElementById('search');
-    const suggWrap = document.getElementById('suggestions');
-    const resultsEl = document.getElementById('results');
+// Intro nur beim ersten Mal, sonst sofort Spinner
+if (wantIntro) {
+  showIntro();
+} else {
+  showSpinner();
+}
 
-    // Spinner-Helfer (einmal im IIFE definieren, direkt über dem fetch)
-const spinner = document.getElementById('spinner');
-function showSpinner(){ if (spinner) spinner.style.display = 'grid'; }
-function hideSpinner(){ if (spinner) spinner.style.display = 'none'; }
+let rows = [];
+let loading = true;
 
-// Laden mit Mindestdauer + Fehlerbehandlung
-if (!wantIntro) showSpinner();  // Spinner nur zeigen, wenn kein Intro läuft
-let rows;
-try {
-  try {
-  const t0 = Date.now();
-  const data = await fetch('daten.json').then(r => {
-    if (!r.ok) throw new Error('Daten konnten nicht geladen werden.');
-    return r.json();
-  });
-  rows = Array.isArray(data) ? data : (Array.isArray(data.de) ? data.de : Object.values(data));
-  const delay = Math.max(0, 300 - (Date.now() - t0)); // min. 300ms
-  await new Promise(res => setTimeout(res, delay));
-
-  // Erfolgreich geladen:
+// Fallback: nach 10s abbrechen und Fehlermeldung zeigen
+const loadTimeout = setTimeout(() => {
+  if (!loading) return; // schon fertig
   if (wantIntro) {
     hideIntro();
-    localStorage.setItem('kz_intro_done', '1');
-  } else {
-    hideSpinner();
   }
+  hideSpinner();
+  document.getElementById('results').innerHTML =
+    '<p class="muted">❌ Die Daten konnten innerhalb von 10&nbsp;Sekunden nicht geladen werden. ' +
+    'Bitte deine Internetverbindung prüfen und später erneut versuchen.</p>';
+}, 10000);
+
+try {
+  const resp = await fetch('daten.json');
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+  const data = await resp.json();
+
+  rows = Array.isArray(data)
+    ? data
+    : (Array.isArray(data.de) ? data.de : Object.values(data));
+
+  // wenn es hier ankommt, war Laden erfolgreich
+  localStorage.setItem('kz_intro_done', '1');
 
 } catch (err) {
   console.error(err);
-  // Fallback: Intro nach 3 s sicher schließen (z. B. bei Netzwerkproblemen)
-  if (wantIntro) {
-    setTimeout(() => {
-      if (introEl && introEl.style.display !== 'none') hideIntro();
-    }, 3000);
-    localStorage.setItem('kz_intro_done', '1');
-  } else {
-    hideSpinner();
-  }
-
   document.getElementById('results').innerHTML =
-    '<p class="muted">❌ Daten konnten nicht geladen werden. Prüfe <code>daten.json</code>.</p>';
-  return;
+    '<p class="muted">❌ Fehler beim Laden der Daten. Bitte später erneut versuchen.</p>';
+
+} finally {
+  // egal ob Erfolg oder Fehler → Timeout stoppen und UI freigeben
+  loading = false;
+  clearTimeout(loadTimeout);
+
+  if (wantIntro) {
+    hideIntro();
   }
-// Nach erfolgreichem Laden:
-if (wantIntro) {
-  hideIntro();
-  localStorage.setItem('kz_intro_done', '1');
-} else {
   hideSpinner();
-}
+  }
 
     const fuse = new Fuse(rows, {
       keys: [
