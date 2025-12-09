@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kennzeichensuche</title>
+
+  <!-- Manifest & App-Infos -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#121212" />
+  <meta name="description" content="Offlinefähige Kennzeichen-App mit Favoriten und Verlauf." />
+
+  <!-- Icons -->
+  <link rel="icon" href="icons/icon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <!-- Styles -->
+  <style>
+    :root{
+      --bg:#0b1020; --bg-soft:#111733; --card:#0f1733; --text:#e9ecf5; --muted:#a7b0c6;
+      --primary:#5b8cff; --accent:#8ef0bf; --ring:rgba(139,172,255,.35);
+      --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    @media (prefers-color-scheme: light){
+      :root{ --bg:#f6f8fc; --bg-soft:#fff; --card:#fff; --text:#0d1220; --muted:#6b7280;
+        --primary:#3b82f6; --accent:#10b981; --ring:rgba(59,130,246,.25); --shadow:0 10px 25px rgba(15,23,42,.08); }
+    }
+    body.light{ --bg:#f6f8fc; --bg-soft:#fff; --card:#fff; --text:#0d1220; --muted:#6b7280;
+      --primary:#3b82f6; --accent:#10b981; --ring:rgba(59,130,246,.25); --shadow:0 10px 25px rgba(15,23,42,.08); }
+
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 100% -10%, rgba(91,140,255,.25), transparent 60%),
+        radial-gradient(900px 600px at -10% 110%, rgba(142,240,191,.18), transparent 60%),
+        var(--bg);
+      font-family: system-ui,-apple-system,"Segoe UI",Roboto,Inter,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased; line-height:1.45;
+    }
+
+    /* Container, Header, Buttons usw... */
+    .container{max-width:900px;margin:0 auto;padding:24px}
+    .header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px;}
+    .brand{display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:999px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08); box-shadow:var(--shadow);}
+    .brand .logo{width:36px;height:36px;border-radius:10px; display:grid;place-items:center;color:#fff;font-weight:800;
+      background: linear-gradient(135deg,var(--primary),#7aa4ff); box-shadow: 0 10px 18px rgba(91,140,255,.35), inset 0 1px 1px rgba(255,255,255,.25);}
+    .brand strong{font-size:1.05rem}
+
+    .toolbar{display:flex; gap:10px; align-items:center}
+    .btn{appearance:none; border:1px solid rgba(255,255,255,.1); color:var(--text);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      padding:.55rem .85rem; border-radius:12px; cursor:pointer; box-shadow:var(--shadow);}
+    .btn:hover{border-color:var(--ring)}
+    .btn.primary{background:linear-gradient(180deg, rgba(91,140,255,.25), rgba(91,140,255,.15)); border-color:var(--ring)}
+
+    /* Suche */
+    .searchWrap{position:relative; margin:10px 0 16px;}
+    #search{width:100%; padding:14px 16px; border-radius:14px; border:1px solid rgba(255,255,255,.12);
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)); color:var(--text); outline:none; box-shadow:var(--shadow);}
+    #search:focus{border-color:var(--ring); box-shadow:0 0 0 4px var(--ring)}
+
+    /* Karten */
+    #results{display:grid; gap:12px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.12); border-radius:var(--radius); padding:14px 16px;
+      box-shadow:var(--shadow); backdrop-filter: blur(4px);}
+    .topRow{display:flex;align-items:center; justify-content:space-between; gap:12px}
+    .code{font-size:1.05rem; font-weight:800; letter-spacing:.5px; padding:.25rem .6rem; border-radius:10px; color:#0b1020;
+      background: linear-gradient(135deg,#fff,#ebefff); box-shadow:inset 0 1px 0 rgba(0,0,0,.05), 0 6px 14px rgba(91,140,255,.25);}
+
+    .badge{display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem;
+      padding:.25rem .55rem; border-radius:999px;
+      background:rgba(91,140,255,.15); color:var(--text);
+      border:1px solid rgba(91,140,255,.25);}
+
+    /* Flaggen usw */
+    .flag{font-size:1rem}
+    .muted{color:var(--muted)}
+
+    /* Intro */
+    .intro {
+      position: fixed; inset: 0; z-index: 10000;
+      display: grid; place-items: center;
+      background:
+        radial-gradient(900px 600px at 100% -10%, rgba(91,140,255,.22), transparent 60%),
+        radial-gradient(800px 480px at -10% 110%, rgba(142,240,191,.16), transparent 60%),
+        var(--bg);
+      color: var(--text);
+    }
+    .intro.hide { animation: introFadeOut .5s ease forwards; }
+
+    .intro-card{
+      display:grid; place-items:center; gap:.7rem;
+      padding:2rem 2.4rem;
+      border-radius:18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.12); box-shadow: var(--shadow);
+      text-align:center;
+    }
+    .intro-logo{
+      width:64px; height:64px; border-radius:14px; color:#fff; font-weight:800; font-size:1.25rem;
+      display:grid; place-items:center;
+      background: linear-gradient(135deg, var(--primary), #7aa4ff);
+      box-shadow: 0 12px 22px rgba(91,140,255,.35), inset 0 1px 1px rgba(255,255,255,.25);
+    }
+
+    /* Ladebildschirm */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: #0d1117;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #loader-bar {
+      width: 80%; max-width: 400px; height: 8px;
+      background: #222; border-radius: 4px; margin-top: 10px;
+      overflow: hidden;
+    }
+    #loader-progress {
+      width: 0%; height: 100%; background: #00e1ff;
+      transition: width 0.2s ease-out;
+    }
+
+    /* Fehlerschirm */
+    #error-screen {
+      position: fixed; inset: 0; display: none;
+      justify-content: center; align-items: center;
+      flex-direction: column; color: #fff;
+      background: #0d1117; padding: 1.5rem; text-align:center;
+      gap: 1rem; z-index: 9999;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Ladebildschirm -->
+  <div id="loading-screen">
+    <div id="loader-text">Lade Daten...</div>
+    <div id="loader-bar"><div id="loader-progress"></div></div>
+  </div>
+
+  <!-- Fehlerschirm -->
+  <div id="error-screen">
+    <h2>Fehler beim Laden</h2>
+    <p id="error-text">Die Daten konnten nicht geladen werden.</p>
+    <button onclick="location.reload()">Erneut versuchen</button>
+  </div>
+
+  <!-- Intro -->
+  <div id="intro" class="intro">
+    <div class="intro-card">
+      <div class="intro-logo">KF</div>
+      <div class="intro-title">Kennzeichensuche</div>
+      <div class="intro-sub">Schnell. Offline. Mit Favoriten.</div>
+      <div class="intro-sub">Version 2.2b</div>
+    </div>
+  </div>
+
+  <!-- App -->
+  <main id="app-root" style="display:none;">
+    <div class="container">
+      <div class="header">
+        <div class="brand">
+          <div class="logo">KFZ</div>
+          <strong>Kennzeichensuche</strong>
+        </div>
+        <div class="toolbar">
+          <button id="themeToggle" class="btn">🌗 Theme</button>
+        </div>
+      </div>
+
+      <div class="searchWrap">
+        <input id="search" type="text" placeholder="Kennzeichen oder Ort…" autocomplete="off">
+        <div id="suggestions"></div>
+      </div>
+
+      <div id="results"></div>
+
+      <section style="margin-top:22px">
+        <h3>Favoriten</h3>
+        <div id="favs"></div>
+      </section>
+
+      <section style="margin-top:22px">
+        <h3>Verlauf</h3>
+        <div id="history"></div>
+      </section>
+      <!-- Ende des sichtbaren App-Gerüsts -->
+    </div>
+  </main>
+
+  <!-- Libs -->
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@6"></script>
+
+  <!-- App-Logik -->
+  <script>
+    // ------- kleine Utils -------
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => [...root.querySelectorAll(sel)];
+    const escapeHtml = (s='') => String(s)
+      .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+      .replaceAll('"','&quot;').replaceAll("'","&#039;");
+
+    // ------- Ladebildschirm / Fehlerbildschirm -------
+    const introEl = $('#intro');
+    const appRoot = $('#app-root');
+    const loadingEl = $('#loading-screen');
+    const errorEl = $('#error-screen');
+    const errorTextEl = $('#error-text');
+    const bar = $('#loader-progress');
+    const barText = $('#loader-text');
+
+    function setProgress(pct, text) {
+      bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+      if (text) barText.textContent = text;
+    }
+    function finishLoading() {
+      loadingEl.style.display = 'none';
+      introEl.classList.add('hide');
+      setTimeout(()=> introEl.style.display='none', 450);
+      appRoot.style.display = '';
+    }
+    function failLoading(msg) {
+      loadingEl.style.display = 'none';
+      introEl.style.display = 'none';
+      errorTextEl.textContent = msg || 'Unbekannter Fehler.';
+      errorEl.style.display = 'flex';
+    }
+
+    // ------- Favoriten & Verlauf -------
+    const FAV_KEY = 'kz_favs_v1';
+    const HIST_KEY = 'kz_hist_v1';
+    const getFavs = () => JSON.parse(localStorage.getItem(FAV_KEY)||'[]');
+    const setFavs = v => localStorage.setItem(FAV_KEY, JSON.stringify(v));
+    const isFav = code => getFavs().some(x=>x.code===code);
+    function toggleFav(item) {
+      const arr = getFavs();
+      const idx = arr.findIndex(x=>x.code===item.code);
+      if (idx>=0) arr.splice(idx,1); else arr.unshift(item);
+      setFavs(arr.slice(0,50));
+      renderFavs();
+      renderResults(currentList); // Stern live aktualisieren
+    }
+    function pushHist(item) {
+      const arr = JSON.parse(localStorage.getItem(HIST_KEY)||'[]');
+      const filtered = arr.filter(x=>x.code!==item.code);
+      filtered.unshift({ ...item, ts: Date.now() });
+      localStorage.setItem(HIST_KEY, JSON.stringify(filtered.slice(0,50)));
+      renderHistory();
+    }
+
+    // ------- Rendering -------
+    let currentList = [];
+    function renderFavs() {
+      const el = $('#favs');
+      const favs = getFavs();
+      if (!favs.length) { el.innerHTML = '<p class="muted">Noch keine Favoriten.</p>'; return; }
+      el.innerHTML = favs.map(it => cardHtml(it)).join('');
+    }
+    function renderHistory() {
+      const el = $('#history');
+      const hist = JSON.parse(localStorage.getItem(HIST_KEY)||'[]');
+      if (!hist.length) { el.innerHTML = '<p class="muted">Noch kein Verlauf.</p>'; return; }
+      el.innerHTML = hist.map(it => cardHtml(it)).join('');
+    }
+    function cardHtml(it){
+      const flag = it.flag ? `<span class="flag">${escapeHtml(it.flag)}</span>` : '';
+      const state = it.state ? `<span class="badge">${escapeHtml(it.state)}</span>` : '';
+      const city = it.city ? escapeHtml(it.city) : '—';
+      const code = escapeHtml(it.code);
+      const mapQ = encodeURIComponent(it.city || it.code);
+      const favOn = isFav(it.code);
+      return `
+      <div class="card">
+        <div class="topRow">
+          <div>
+            <span class="code">${code}</span>
+            ${state} ${flag}
+            <div class="muted">${city}</div>
+          </div>
+          <button class="btn" title="${favOn?'Favorit entfernen':'Als Favorit speichern'}"
+            onclick='(function(){toggleFav(${JSON.stringify(it)});})()'>${favOn?'★':'☆'}</button>
+        </div>
+        <div style="margin-top:.5rem">
+          <a target="_blank" rel="noopener"
+             href="https://www.google.com/maps/search/?api=1&query=${mapQ}">
+            Auf der Karte zeigen
+          </a>
+        </div>
+      </div>`;
+    }
+    function renderResults(list) {
+      currentList = list || [];
+      const el = $('#results');
+      if (!currentList.length) { el.innerHTML = '<p class="muted">Keine Treffer.</p>'; return; }
+      el.innerHTML = currentList.map(res => cardHtml(res.item || res)).join('');
+    }
+
+    // ------- Suche / Autocomplete -------
+    let fuse, rows = [];
+    const input = $('#search');
+    const suggWrap = $('#suggestions');
+
+    function buildFuse() {
+      fuse = new Fuse(rows, {
+        keys: [
+          { name: 'code',  weight: 0.6 },
+          { name: 'city',  weight: 0.3 },
+          { name: 'state', weight: 0.1 }
+        ],
+        threshold: 0.3,
+        ignoreLocation: true,
+        minMatchCharLength: 1,
+        useExtendedSearch: true,
+        includeMatches: true
+      });
+      window.fuse = fuse; // Debug
+    }
+
+    function doSearch(q){
+      if (!q.trim()) { renderResults([]); return; }
+      const out = fuse.search(q).slice(0, 50);
+      renderResults(out);
+    }
+
+    function buildSuggestions(res){
+      const list = document.createElement('div');
+      list.style.position = 'absolute';
+      list.style.insetInline = '0';
+      list.style.top = 'calc(100% + 6px)';
+      list.style.background = 'var(--card)';
+      list.style.border = '1px solid rgba(255,255,255,.12)';
+      list.style.borderRadius = '12px';
+      list.style.boxShadow = 'var(--shadow)';
+      list.style.maxHeight = '320px';
+      list.style.overflow = 'auto';
+      list.style.zIndex = '50';
+      list.style.padding = '6px';
+
+      res.slice(0,10).forEach(it=>{
+        const div = document.createElement('div');
+        div.style.padding = '.5rem .6rem';
+        div.style.borderRadius = '10px';
+        div.style.cursor = 'pointer';
+        div.onmouseenter = ()=> div.style.background = 'rgba(255,255,255,.06)';
+        div.onmouseleave = ()=> div.style.background = 'transparent';
+        div.onclick = ()=>{
+          input.value = [it.code, it.city, it.state].filter(Boolean).join(' ');
+          pushHist(it);
+          doSearch(it.code);
+          suggWrap.innerHTML = '';
+        };
+        div.innerHTML = `<strong>${escapeHtml(it.code)}</strong> <span class="muted">${escapeHtml(it.city||'')}</span>`;
+        list.appendChild(div);
+      });
+
+      suggWrap.innerHTML = '';
+      suggWrap.appendChild(list);
+    }
+
+    input.addEventListener('input', e=>{
+      const q = e.target.value;
+      if (!q.trim()) { suggWrap.innerHTML=''; renderResults([]); return; }
+      const quick = rows.filter(r =>
+        r.code?.toLowerCase().startsWith(q.toLowerCase()) ||
+        r.city?.toLowerCase().startsWith(q.toLowerCase())
+      );
+      buildSuggestions(quick.slice(0,20));
+      doSearch(q);
+    });
+
+    document.addEventListener('click', (e)=>{
+      if (!suggWrap.contains(e.target) && e.target!==input) suggWrap.innerHTML='';
+    });
+
+    // ------- Theme Toggle -------
+    $('#themeToggle').addEventListener('click', ()=>{
+      document.body.classList.toggle('light');
+      localStorage.setItem('kz_theme_light', document.body.classList.contains('light') ? '1':'0');
+    });
+    if (localStorage.getItem('kz_theme_light')==='1') document.body.classList.add('light');
+
+    // ------- Service Worker -------
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(console.warn);
+    }
+
+    // ------- Laden der Daten mit Fortschritts-Simulation & Timeout -------
+    (async function init(){
+      // Intro nur beim ersten Mal zeigen
+      const introSeen = localStorage.getItem('kz_intro_done') === '1';
+      if (introSeen) { introEl.style.display='none'; }
+
+      // Progress animieren
+      let pct = 0;
+      const anim = setInterval(()=>{
+        pct = Math.min(95, pct + Math.random()*12);
+        setProgress(pct);
+      }, 180);
+
+      // Harte 10s-Deadline
+      const timeout = new Promise((_,rej)=> setTimeout(()=>rej(new Error('timeout')), 10000));
+
+      try {
+        const resp = await Promise.race([
+          fetch('daten.json', { cache: 'no-store' }),
+          timeout
+        ]);
+
+        if (!resp || !resp.ok) throw new Error('HTTP-Fehler');
+
+        const data = await resp.json();
+
+        rows = Array.isArray(data)
+          ? data
+          : (Array.isArray(data.de) ? data.de : Object.values(data));
+
+        if (!rows.length) throw new Error('Leere Daten');
+
+        // Fuse bauen & UI rendern
+        buildFuse();
+        renderResults([]);
+        renderFavs();
+        renderHistory();
+
+        // Erfolg -> UI freigeben
+        clearInterval(anim);
+        setProgress(100, 'Fertig');
+        localStorage.setItem('kz_intro_done','1');
+        setTimeout(finishLoading, 250);
+
+      } catch (err) {
+        console.error(err);
+        clearInterval(anim);
+        setProgress(100);
+        // Schöne Fehlermeldung
+        const msg = (err && err.message === 'timeout')
+          ? 'Zeitüberschreitung beim Laden der Daten (10 s).'
+          : 'Die Daten konnten nicht geladen werden.';
+        failLoading(msg + ' Die App funktioniert offline, sobald die Daten einmal erfolgreich geladen wurden.');
+      }
+    })();
+  </script>
+</body>
+  </html>
