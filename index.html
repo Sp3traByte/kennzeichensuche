@@ -17,6 +17,85 @@
 
   <!-- Styles -->
   <style>
+    #loading-screen {
+  position: fixed;
+  inset: 0;
+  background: #0d1117;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+#loader-bar {
+  width: 80%;
+  max-width: 400px;
+  height: 8px;
+  background: #222;
+  border-radius: 4px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+#loader-progress {
+  width: 0%;
+  height: 100%;
+  background: #00e1ff;
+  transition: width 0.2s ease-out;
+}
+
+#error-screen {
+  position: fixed;
+  inset: 0;
+  background: #0d1117;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem;
+  gap: 1rem;
+  z-index: 9999;
+}
+
+#error-screen button {
+  background: #00e1ff;
+  color: #000;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+    #loading-screen {
+  position: fixed;
+  inset: 0;
+  background: #0d1117;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+#loader-bar {
+  width: 80%;
+  height: 8px;
+  background: #222;
+  border-radius: 4px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+#loader-progress {
+  width: 0%;
+  height: 100%;
+  background: #00e1ff;
+  transition: width 0.2s ease-out;
+}
   /* --- Intro / Splash --- */
 .intro {
   position: fixed; inset: 0; z-index: 10000;
@@ -206,6 +285,34 @@
 </head>
 
 <body>
+  <!-- Ladebildschirm -->
+<div id="loading-screen">
+  <div id="loader-text">Lade Daten...</div>
+  <div id="loader-bar">
+    <div id="loader-progress"></div>
+  </div>
+</div>
+
+<!-- Fehlermeldung -->
+<div id="error-screen" style="display:none;">
+  <h2>Fehler beim Laden</h2>
+  <p id="error-text">
+    Die Daten konnten nicht geladen werden. Bitte Internetverbindung prüfen
+    und es erneut versuchen.
+  </p>
+  <button onclick="location.reload()">Erneut versuchen</button>
+</div>
+
+<!-- Deine eigentliche App -->
+<main id="app-root" style="display:none;">
+  <!-- HIER bleibt dein bisheriger Inhalt (Suchleiste, Ergebnisse, usw.) -->
+</main>
+  <div id="loading-screen">
+    <div id="loader-text">Lade Daten...</div>
+    <div id="loader-bar">
+      <div id="loader-progress"></div>
+    </div>
+  </div>
   <!-- Start-Intro -->
 <div id="intro" class="intro" aria-hidden="true">
   <div class="intro-card">
@@ -252,9 +359,82 @@
 
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/fuse.js@6"></script>
+  <script>
+// Ladebalken Animation
+let progress = 0;
+const bar = document.getElementById("loader-progress");
+
+// Simulierter Fortschritt 0–100%
+const interval = setInterval(() => {
+    progress += 5;
+    bar.style.width = progress + "%";
+}, 100);
+
+// Timeout nach 10 Sekunden → Fehler
+const loadTimeout = setTimeout(() => {
+    clearInterval(interval);
+    document.getElementById("loader-text").innerText =
+        "Fehler: Daten konnten nicht geladen werden.";
+    bar.style.background = "red";
+}, 10000);
+
+// Aufruf nach erfolgreichem Laden
+function finishLoading() {
+    clearInterval(interval);
+    bar.style.width = "100%";
+    
+    setTimeout(() => {
+        document.getElementById("loading-screen").style.opacity = "0";
+        setTimeout(() => {
+            document.getElementById("loading-screen").remove();
+        }, 500);
+    }, 300);
+}
+  </script>
+
+  <script>
+const loadingScreen = document.getElementById('loading-screen');
+const errorScreen   = document.getElementById('error-screen');
+const errorTextEl   = document.getElementById('error-text');
+const appRoot       = document.getElementById('app-root');
+const progressBar   = document.getElementById('loader-progress');
+
+let progress = 0;
+const progressTimer = setInterval(() => {
+  if (progress < 95) {          // bis 95 %, den Rest macht finishLoading()
+    progress += 3;
+    progressBar.style.width = progress + '%';
+  }
+}, 120);
+
+// nach 10 s: Timeout-Fehler
+const timeoutTimer = setTimeout(() => {
+  showError('Zeitüberschreitung beim Laden der Daten (Timeout).');
+}, 10000);
+
+function finishLoading() {
+  clearInterval(progressTimer);
+  clearTimeout(timeoutTimer);
+  progressBar.style.width = '100%';
+
+  setTimeout(() => {
+    loadingScreen.style.display = 'none';
+    appRoot.style.display = 'block';
+  }, 300);
+}
+
+function showError(msg) {
+  clearInterval(progressTimer);
+  clearTimeout(timeoutTimer);
+  loadingScreen.style.display = 'none';
+  errorTextEl.textContent = msg;
+  errorScreen.style.display = 'flex';
+}
+  </script>
 
   <!-- App-Logik -->
   <script>
+    
   const introEl = document.getElementById('intro');
 const spinner = document.getElementById('spinner');
 
@@ -293,26 +473,35 @@ const loadTimeout = setTimeout(() => {
     '<p class="muted">❌ Die Daten konnten innerhalb von 10&nbsp;Sekunden nicht geladen werden. ' +
     'Bitte deine Internetverbindung prüfen und später erneut versuchen.</p>';
 }, 10000);
-
 try {
-  const resp = await fetch('daten.json');
+  const resp = await fetch('daten.json', { cache: 'no-store' });
   if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
   const data = await resp.json();
 
+  // Daten in rows übertragen
   rows = Array.isArray(data)
     ? data
     : (Array.isArray(data.de) ? data.de : Object.values(data));
 
-  // wenn es hier ankommt, war Laden erfolgreich
+  // Einmalige Intro-Markierung setzen
   localStorage.setItem('kz_intro_done', '1');
+
+  // ⬅️ Ladebildschirm beenden
+  finishLoading();
+
+  // ⬅️ Ab hier kommt deine komplette App-Initialisierung:
+  // fuse.js setup,
+  // Eventlistener,
+  // Render-Calls,
+  // usw.
 
 } catch (err) {
   console.error(err);
-  document.getElementById('results').innerHTML =
-    '<p class="muted">❌ Fehler beim Laden der Daten. Bitte später erneut versuchen.</p>';
 
-} finally {
+  // ⬅️ Anstelle der alten Fehlermeldung:
+  showError("Fehler beim Laden der Daten: " + err.message);
+    }finally {
   // egal ob Erfolg oder Fehler → Timeout stoppen und UI freigeben
   loading = false;
   clearTimeout(loadTimeout);
